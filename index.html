@@ -58,14 +58,14 @@
     /* Headings (Reduced sizes) */
     h1 {
       font-family: 'Roboto', sans-serif;
-      font-size: 1.5rem; /* Reduced */
+      font-size: 1.5rem;
       text-align: center;
       color: #333;
       margin: 20px 0 20px;
     }
     h2 {
       font-family: 'Roboto', sans-serif;
-      font-size: 1.25rem; /* Reduced */
+      font-size: 1.25rem;
       color: #333;
       margin-bottom: 15px;
     }
@@ -165,23 +165,49 @@
       text-align: left;
     }
 
-    /* Menu Information Text (for the Preview) */
-    .menu-info {
-      font-family: 'Times New Roman', Times, serif;
-      text-align: center;
-      font-size: 12pt;
-      font-style: italic;
-      text-transform: lowercase;
-      margin: 20px 0 60px; 
-      line-height: 1.5;
-    }
-
     /* Logo Styling */
     .logo {
       display: block;
       margin: 0 auto 20px;
       max-width: 200px;
       height: auto;
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none; /* Hidden by default */
+      position: fixed; 
+      z-index: 9999; 
+      left: 0; 
+      top: 0; 
+      width: 100%; 
+      height: 100%; 
+      overflow: auto; 
+      background-color: rgba(0,0,0,0.5); 
+    }
+    .modal-content {
+      background-color: #fff;
+      margin: 10% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 600px;
+      position: relative;
+    }
+    .modal .closeBtn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #aaa;
+      cursor: pointer;
+    }
+    .modal .closeBtn:hover {
+      color: #000;
+    }
+    #allDishesList p {
+      margin: 6px 0;
     }
   </style>
 </head>
@@ -216,10 +242,10 @@
             <option value="kiddie">Kiddies' buffet - USD$15</option>
           </select>
           <button id="refreshBtn">Refresh</button>
+          <button id="viewAllDishesBtn">View All Dishes</button>
         </div>
       </fieldset>
 
-      <!-- Container for dynamic dish count inputs -->
       <fieldset id="dishCounts" class="menu-section hidden">
         <legend>Enter Dish Counts:</legend>
         <div id="courseCounts">
@@ -262,7 +288,6 @@
         <label for="customDishName">Dish Name:</label>
         <input type="text" id="customDishName" placeholder="Enter dish name">
 
-        <!-- We keep description for the PDF, so we need a field for it -->
         <label for="customDishDescription">Description:</label>
         <input type="text" id="customDishDescription" placeholder="Enter dish description">
 
@@ -290,6 +315,18 @@
       </div>
     </div>
   </div>
+
+  <!-- ======== MODAL FOR ALL DISHES ======== -->
+  <div id="allDishesModal" class="modal">
+    <div class="modal-content">
+      <span class="closeBtn" id="closeAllDishesModal">&times;</span>
+      <h2>All Dishes</h2>
+      <div id="allDishesList">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+  <!-- ====================================== -->
 
   <!-- Choices.js JS -->
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
@@ -321,6 +358,12 @@
       const backToBeginningButton = document.getElementById('backToBeginning');
       const downloadPdfButton = document.getElementById('downloadPdf');
 
+      // For "View All Dishes" modal
+      const viewAllDishesBtn = document.getElementById('viewAllDishesBtn');
+      const allDishesModal = document.getElementById('allDishesModal');
+      const closeAllDishesModal = document.getElementById('closeAllDishesModal');
+      const allDishesList = document.getElementById('allDishesList');
+
       // For custom dish
       const addCustomDishButton = document.getElementById('addCustomDish');
       const customDishCourse = document.getElementById('customDishCourse');
@@ -350,13 +393,19 @@
         .then(data => {
           dishesByType = data;
           console.log("Dishes loaded:", dishesByType);
+
+          // Define click behavior for "View All Dishes"
+          viewAllDishesBtn.addEventListener('click', () => {
+            populateAllDishes();
+            openAllDishesModal();
+          });
         })
         .catch(error => {
           console.error("Error loading dishes:", error);
           alert("Failed to load dish data. Please try again later.");
         });
 
-      // ======= Show a Specific Page =======
+      // ======= showPage() Function =======
       function showPage(pageId) {
         document.querySelectorAll('.page').forEach(pg => pg.classList.add('hidden'));
         const targetPage = document.getElementById(pageId);
@@ -420,6 +469,7 @@
           const numStarters = parseInt(document.getElementById('numStarters')?.value) || 0;
           const numMains = parseInt(document.getElementById('numMains')?.value) || 0;
           const numDesserts = parseInt(document.getElementById('numDesserts')?.value) || 0;
+          // At least one non-zero means valid:
           isValid = (numStarters > 0 || numMains > 0 || numDesserts > 0);
         } else {
           const numDishes = parseInt(document.getElementById('numDishes')?.value) || 0;
@@ -429,6 +479,7 @@
       }
 
       toPage2Button.addEventListener('click', () => {
+        // Move to Page 2
         showPage('page2');
         populateCourseSelection();
       });
@@ -437,6 +488,14 @@
       backToPage1Button.addEventListener('click', () => {
         showPage('page1');
       });
+
+      // Enable "Next" only if all dish dropdowns are selected
+      function validatePage2Selections() {
+        const allSelections = Array.from(document.querySelectorAll('.course-select'));
+        // "true" if every select has a non-empty value
+        const allSelected = allSelections.every(sel => sel.value !== '');
+        toPage3Button.disabled = !allSelected;
+      }
 
       function populateCourseSelection() {
         courseSelectionArea.innerHTML = '';
@@ -457,11 +516,13 @@
           if (mainsCount > 0) createCourseSection('Mains', 'mains', mainsCount);
           if (dessertsCount > 0) createCourseSection('Desserts', 'desserts', dessertsCount);
         } else {
+          // For buffet or kiddie
           const title = (type === 'buffet') ? 'Buffet Dishes' : 'Kiddie Dishes';
           createCourseSection(title, type, otherCount);
         }
 
         initializeCourseSelects();
+        // Check if everything is selected from the start
         validatePage2Selections();
       }
 
@@ -495,28 +556,34 @@
           const courseType = sel.dataset.courseType;
           const index = parseInt(sel.dataset.index);
 
+          // Setup Choices.js
           const choicesInstance = new Choices(sel, {
             searchEnabled: true,
             itemSelectText: '',
             shouldSort: false
           });
 
+          // Keep track of each Choices instance by course type
           courseChoiceInstances[courseType][index] = choicesInstance;
 
+          // On each select change, store in selectedDishes + re-validate
           sel.addEventListener('change', () => {
             const selectedDishName = sel.value;
             if (selectedDishName) {
-              const dishObj = dishesByType[courseType].find(d => d.name === selectedDishName);
+              // Match dish from the JSON
+              const dishObj = dishesByType[courseType]?.find(d => d.name === selectedDishName);
               selectedDishes[courseType][index] = dishObj || null;
             } else {
               selectedDishes[courseType][index] = null;
             }
+            // Keep unique choices if you do not allow duplicates
             updateCourseSelects(courseType);
+            // Re-check if everything is selected
             validatePage2Selections();
           });
         });
 
-        // Initial pass to remove duplicates
+        // Remove duplicates across selects
         Object.keys(courseChoiceInstances).forEach(ct => updateCourseSelects(ct));
       }
 
@@ -526,23 +593,20 @@
         courseChoiceInstances[courseType].forEach((choicesInstance, idx) => {
           const currentDish = selectedDishes[courseType][idx];
           const otherChosen = chosenDishes.filter(d => d !== currentDish);
-          const availableDishes = dishesByType[courseType].filter(d => {
+
+          // Rebuild the choices, excluding duplicates
+          const availableDishes = dishesByType[courseType]?.filter(d => {
             return !otherChosen.some(ch => ch.name === d.name);
-          });
+          }) || [];
 
-          const choicesArray = [{ value: '', label: '--Select--' }].concat(
-            availableDishes.map(d => ({
-              value: d.name,
-              label: d.name
-            }))
-          );
+          const choicesArray = [{ value: '', label: '--Select--' }]
+            .concat(availableDishes.map(d => ({ value: d.name, label: d.name })));
 
+          // Re-set the available choices
           choicesInstance.setChoices(choicesArray, 'value', 'label', true);
 
-          if (
-            currentDish &&
-            availableDishes.find(d => d.name === currentDish.name)
-          ) {
+          // Re-select the previously chosen dish if still valid
+          if (currentDish && availableDishes.find(d => d.name === currentDish.name)) {
             choicesInstance.setChoiceByValue(currentDish.name);
           } else {
             selectedDishes[courseType][idx] = null;
@@ -550,18 +614,10 @@
         });
       }
 
-      function validatePage2Selections() {
-        const allSelections = Array.from(document.querySelectorAll('.course-select'));
-        const allSelected = allSelections.every(sel => sel.value !== '');
-        toPage3Button.disabled = !allSelected;
-      }
-
+      // >>>> Event listener for Page 2 "Next" button <<<<
       toPage3Button.addEventListener('click', () => {
+        // If everything is selected, go to Page 3
         showPage('page3');
-      });
-
-      backToPage2Button.addEventListener('click', () => {
-        showPage('page2');
       });
 
       // ======= PAGE 3 (Custom Dishes) =======
@@ -612,15 +668,9 @@
         showPage('page3');
       });
       backToBeginningButton.addEventListener('click', () => {
-        selectedDishes = {
-          starters: [],
-          mains: [],
-          desserts: [],
-          buffet: [],
-          kiddie: []
-        };
+        // Reset everything
+        selectedDishes = { starters: [], mains: [], desserts: [], buffet: [], kiddie: [] };
         customDishes = [];
-
         showPage('page1');
         courseCounts.innerHTML = '';
         dishCounts.classList.add('hidden');
@@ -629,7 +679,10 @@
         courseSelectionArea.innerHTML = '';
       });
 
-      // ---- CONSOLE-STYLE PREVIEW (NO DESCRIPTIONS) ----
+      /**
+       * populatePreview():
+       * We do NOT show the "Mains are served..." text in the preview.
+       */
       function populatePreview() {
         previewPane.innerHTML = '';
 
@@ -692,13 +745,17 @@
         });
       }
 
-      // Provide full text for PDF (with descriptions)
+      /**
+       * getMenuInfoText():
+       * Return the "table d’hôte" lines or buffet text for PDF
+       * Changed "us" => "US" here
+       */
       function getMenuInfoText() {
         switch (menuType.value) {
           case '3course':
             return `Table d’hôte
-3 courses - us $30  
-2 courses (starter/main or main/dessert) - us $25
+3 courses - US $30
+2 courses (starter/main or main/dessert) - US $25
 $3 supplemental charge for tempura prawns`;
           case 'buffet':
             return `Buffet - USD$30`;
@@ -709,7 +766,10 @@ $3 supplemental charge for tempura prawns`;
         }
       }
 
-      // ======= PDF Download (Include Descriptions) =======
+      /**
+       * loadImageAsBase64():
+       * Convert a logo to base64 for PDF
+       */
       function loadImageAsBase64(url, callback) {
         const img = new Image();
         img.setAttribute('crossOrigin', 'anonymous');
@@ -729,6 +789,10 @@ $3 supplemental charge for tempura prawns`;
         img.src = url;
       }
 
+      /**
+       * Download PDF:
+       * We add "*Mains are served..." only after the last main dish (including custom).
+       */
       downloadPdfButton.addEventListener('click', () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
@@ -748,7 +812,8 @@ $3 supplemental charge for tempura prawns`;
               desiredWidth,
               calculatedHeight
             );
-            yPos += calculatedHeight + 5;
+            // Lower the text to be closer to the logo (was +5, now +2):
+            yPos += calculatedHeight + 2;
           }
 
           // Menu Info text
@@ -789,7 +854,6 @@ $3 supplemental charge for tempura prawns`;
 
               // For each standard dish, print Name + Description
               dishes.forEach(dish => {
-                // Dish name
                 doc.setFont('Times', 'normal');
                 doc.setFontSize(11);
                 doc.text(`${dish.name.toUpperCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
@@ -797,7 +861,6 @@ $3 supplemental charge for tempura prawns`;
                 });
                 yPos += 6;
 
-                // Dish description
                 doc.setFont('Times', 'italic');
                 doc.setFontSize(11);
                 doc.text(`${dish.description.toLowerCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
@@ -808,7 +871,6 @@ $3 supplemental charge for tempura prawns`;
 
               // For each custom dish, print Name + Description
               customChosen.forEach(dish => {
-                // Dish name
                 doc.setFont('Times', 'normal');
                 doc.setFontSize(11);
                 doc.text(`${dish.name.toUpperCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
@@ -816,7 +878,6 @@ $3 supplemental charge for tempura prawns`;
                 });
                 yPos += 6;
 
-                // Dish description
                 doc.setFont('Times', 'italic');
                 doc.setFontSize(11);
                 doc.text(`${dish.description.toLowerCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
@@ -824,6 +885,23 @@ $3 supplemental charge for tempura prawns`;
                 });
                 yPos += 10;
               });
+
+              // === ADD THE NOTE AFTER "MAINS" ===
+              if (courseType === 'mains') {
+                doc.setFont('Times', 'italic');
+                doc.setFontSize(12); // ~11.5
+                const mainsNoteText =
+`*Mains are served with the starch of your choice (fries, mashed
+potatoes, rice, or sadza) and vegetables or garden salad*`;
+
+                const splitNote = doc.splitTextToSize(mainsNoteText, 180);
+                doc.text(splitNote, doc.internal.pageSize.getWidth() / 2, yPos, {
+                  align: 'center'
+                });
+                yPos += splitNote.length * 6;
+                // Keep desserts heading close
+                yPos += 6;
+              }
             }
           });
 
@@ -852,6 +930,48 @@ $3 supplemental charge for tempura prawns`;
           doc.save(filename);
         });
       });
+
+      // ====== MODAL (View All Dishes) ======
+      function openAllDishesModal() {
+        allDishesModal.style.display = 'block';
+      }
+      function closeAllDishes() {
+        allDishesModal.style.display = 'none';
+      }
+      closeAllDishesModal.addEventListener('click', closeAllDishes);
+
+      // Close the modal if user clicks outside of it
+      window.addEventListener('click', (event) => {
+        if (event.target === allDishesModal) {
+          closeAllDishes();
+        }
+      });
+
+      function populateAllDishes() {
+        if (!dishesByType || typeof dishesByType !== 'object') return;
+        let htmlOutput = '';
+
+        Object.keys(dishesByType).forEach(typeKey => {
+          const dishArray = dishesByType[typeKey];
+          if (!Array.isArray(dishArray)) return;
+
+          // Heading for the dish category
+          htmlOutput += `<h3>${typeKey.toUpperCase()}</h3>`;
+          // List each dish in this category
+          dishArray.forEach(dish => {
+            htmlOutput += `
+              <p>
+                <strong>${dish.name}</strong><br>
+                <em>${dish.description || ''}</em>
+              </p>`;
+          });
+        });
+
+        allDishesList.innerHTML = htmlOutput;
+      }
+
+      // Show Page 1 on initial load
+      showPage('page1');
     });
   </script>
 </body>
