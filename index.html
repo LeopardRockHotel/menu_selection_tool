@@ -55,17 +55,17 @@
       background: #007bff;
     }
 
-    /* Headings */
+    /* Headings (Reduced sizes) */
     h1 {
       font-family: 'Roboto', sans-serif;
-      font-size: 2.5rem;
+      font-size: 1.5rem; /* Reduced */
       text-align: center;
       color: #333;
       margin: 20px 0 20px;
     }
     h2 {
       font-family: 'Roboto', sans-serif;
-      font-size: 2rem;
+      font-size: 1.25rem; /* Reduced */
       color: #333;
       margin-bottom: 15px;
     }
@@ -144,33 +144,28 @@
     .page { display: none; }
     .page:not(.hidden) { display: block; }
 
-    /* Preview Pane Styles */
-    #previewPane h3 {
-      font-family: 'Times New Roman', Times, serif;
-      text-align: center;
-      font-size: 11pt;
-      font-weight: bold;
-      text-transform: uppercase;
+    /* Console-like Preview Pane */
+    #previewPane {
+      background-color: #f7f7f7;
+      border: 1px solid #ccc;
+      padding: 10px;
       margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: "Courier New", monospace;
+      font-size: 0.9rem;
+      color: #444;
     }
-    #previewPane p.name {
-      font-family: 'Times New Roman', Times, serif;
-      text-align: center;
-      font-size: 11pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin: 5px 0 2px;
-    }
-    #previewPane p.description {
-      font-family: 'Times New Roman', Times, serif;
-      text-align: center;
-      font-size: 11pt;
-      font-weight: bold;
-      text-transform: uppercase;
-      margin: 0 0 10px;
+    #previewPane p {
+      margin: 0.5em 0;
+      font-family: inherit;
+      font-size: inherit;
+      font-weight: normal;
+      text-transform: none;
+      text-align: left;
     }
 
-    /* Menu Information Text */
+    /* Menu Information Text (for the Preview) */
     .menu-info {
       font-family: 'Times New Roman', Times, serif;
       text-align: center;
@@ -187,14 +182,6 @@
       margin: 0 auto 20px;
       max-width: 200px;
       height: auto;
-    }
-
-    /* Mains Extra Text */
-    .mains-starch-info {
-      font-style: italic;
-      font-weight: bold;
-      text-align: center;
-      font-size: 12pt;
     }
   </style>
 </head>
@@ -275,6 +262,7 @@
         <label for="customDishName">Dish Name:</label>
         <input type="text" id="customDishName" placeholder="Enter dish name">
 
+        <!-- We keep description for the PDF, so we need a field for it -->
         <label for="customDishDescription">Description:</label>
         <input type="text" id="customDishDescription" placeholder="Enter dish description">
 
@@ -292,9 +280,7 @@
     <!-- Page 4: Preview and Download -->
     <div id="page4" class="page hidden">
       <h2>Preview Menu</h2>
-      <div id="previewPane">
-        <!-- Live preview content will be inserted here -->
-      </div>
+      <div id="previewPane"></div>
       <div class="navigation">
         <button id="backToPage3">Back</button>
         <div>
@@ -313,13 +299,13 @@
   
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // =================== Refresh Button ===================
+      // ======== Refresh Button ========
       const refreshBtn = document.getElementById('refreshBtn');
       refreshBtn.addEventListener('click', () => {
-        location.reload(); // Reload page to reset everything
+        location.reload();
       });
 
-      // =============== DOM Elements ===============
+      // ======= DOM Elements =======
       const menuType = document.getElementById('menuType');
       const dishCounts = document.getElementById('dishCounts');
       const courseCounts = document.getElementById('courseCounts');
@@ -335,13 +321,13 @@
       const backToBeginningButton = document.getElementById('backToBeginning');
       const downloadPdfButton = document.getElementById('downloadPdf');
 
-      // Custom dish elements
+      // For custom dish
       const addCustomDishButton = document.getElementById('addCustomDish');
       const customDishCourse = document.getElementById('customDishCourse');
       const customDishName = document.getElementById('customDishName');
       const customDishDescription = document.getElementById('customDishDescription');
 
-      // =============== Data Structures ===============
+      // ======= Data Structures =======
       let selectedDishes = {
         starters: [],
         mains: [],
@@ -349,16 +335,13 @@
         buffet: [],
         kiddie: []
       };
-      let customDishes = [];
+      let customDishes = []; // each item: { course, name, description }
       let dishesByType = {};
 
-      // We'll store the Choices instances for each course's selects
-      let courseChoiceInstances = {};
+      let courseChoiceInstances = {}; // For each course, an array of Choices instances
+      let customCourseChoices;       // Single Choices instance for customDishCourse
 
-      // Single Choices instance for the Custom Dish course select
-      let customCourseChoices;
-
-      // =============== Fetch Dish Data ===============
+      // ======= Fetch Dishes Data =======
       fetch('./dishes.json')
         .then(response => {
           if (!response.ok) throw new Error("Dishes JSON file not found.");
@@ -373,13 +356,12 @@
           alert("Failed to load dish data. Please try again later.");
         });
 
-      // =============== Show Page Function ===============
+      // ======= Show a Specific Page =======
       function showPage(pageId) {
-        document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
+        document.querySelectorAll('.page').forEach(pg => pg.classList.add('hidden'));
         const targetPage = document.getElementById(pageId);
         if (targetPage) {
           targetPage.classList.remove('hidden');
-          console.log(`Navigated to ${pageId}`);
         } else {
           console.error(`Page with id ${pageId} not found`);
           return;
@@ -400,11 +382,10 @@
         }
       }
 
-      // =============== PAGE 1 ===============
-      // Menu Type Change => Show dish count inputs
+      // ======= PAGE 1 (Menu Type) =======
       menuType.addEventListener('change', () => {
         const type = menuType.value;
-        courseCounts.innerHTML = ''; // Clear previous
+        courseCounts.innerHTML = ''; 
         if (type) {
           dishCounts.classList.remove('hidden');
 
@@ -425,7 +406,7 @@
             `;
           }
           dishCounts.addEventListener('input', validatePage1Inputs);
-          toPage2Button.disabled = true; // disable Next until valid
+          toPage2Button.disabled = true;
         } else {
           dishCounts.classList.add('hidden');
           toPage2Button.disabled = true;
@@ -447,21 +428,19 @@
         toPage2Button.disabled = !isValid;
       }
 
-      // Next => Page 2
       toPage2Button.addEventListener('click', () => {
         showPage('page2');
         populateCourseSelection();
       });
 
-      // =============== PAGE 2 ===============
-      // Back => Page 1
+      // ======= PAGE 2 (Course Selection) =======
       backToPage1Button.addEventListener('click', () => {
         showPage('page1');
       });
 
       function populateCourseSelection() {
         courseSelectionArea.innerHTML = '';
-        courseChoiceInstances = {}; // reset for new selection
+        courseChoiceInstances = {};
         const type = menuType.value;
 
         let startersCount = 0, mainsCount = 0, dessertsCount = 0, otherCount = 0;
@@ -482,13 +461,12 @@
           createCourseSection(title, type, otherCount);
         }
 
-        // after creating the sections, initialize the selects with Choices
         initializeCourseSelects();
         validatePage2Selections();
       }
 
       function createCourseSection(title, courseType, count) {
-        courseChoiceInstances[courseType] = []; // array of choices for this course
+        courseChoiceInstances[courseType] = [];
 
         const section = document.createElement('div');
         section.classList.add('menu-section');
@@ -512,71 +490,61 @@
       }
 
       function initializeCourseSelects() {
-        // For each .course-select in the DOM
         const selects = document.querySelectorAll('.course-select');
-        selects.forEach(selectEl => {
-          const courseType = selectEl.dataset.courseType;
-          const index = parseInt(selectEl.dataset.index);
+        selects.forEach(sel => {
+          const courseType = sel.dataset.courseType;
+          const index = parseInt(sel.dataset.index);
 
-          // Create a Choices instance
-          const choicesInstance = new Choices(selectEl, {
+          const choicesInstance = new Choices(sel, {
             searchEnabled: true,
             itemSelectText: '',
             shouldSort: false
           });
 
-          // Store in our courseChoiceInstances
           courseChoiceInstances[courseType][index] = choicesInstance;
 
-          // Listen for changes
-          selectEl.addEventListener('change', () => {
-            const selectedDishName = selectEl.value;
+          sel.addEventListener('change', () => {
+            const selectedDishName = sel.value;
             if (selectedDishName) {
-              // find the dish object
               const dishObj = dishesByType[courseType].find(d => d.name === selectedDishName);
               selectedDishes[courseType][index] = dishObj || null;
             } else {
               selectedDishes[courseType][index] = null;
             }
-            updateCourseSelects(courseType); // remove duplicates in the same course
+            updateCourseSelects(courseType);
             validatePage2Selections();
           });
         });
 
-        // Do an initial pass to remove duplicates if any
+        // Initial pass to remove duplicates
         Object.keys(courseChoiceInstances).forEach(ct => updateCourseSelects(ct));
       }
 
-      // Remove duplicates for the same course
       function updateCourseSelects(courseType) {
         const chosenDishes = selectedDishes[courseType].filter(Boolean);
 
-        // For each select in this course
         courseChoiceInstances[courseType].forEach((choicesInstance, idx) => {
           const currentDish = selectedDishes[courseType][idx];
-
-          // Exclude current dish from "others"
           const otherChosen = chosenDishes.filter(d => d !== currentDish);
-
-          // Build new array of available dishes (minus the other chosen)
           const availableDishes = dishesByType[courseType].filter(d => {
-            return !otherChosen.some(chosen => chosen.name === d.name);
+            return !otherChosen.some(ch => ch.name === d.name);
           });
 
-          const choicesArray = [{ value: '', label: '--Select--' }]
-            .concat(availableDishes.map(d => ({
+          const choicesArray = [{ value: '', label: '--Select--' }].concat(
+            availableDishes.map(d => ({
               value: d.name,
               label: d.name
-            })));
+            }))
+          );
 
-          // Reset the choices
           choicesInstance.setChoices(choicesArray, 'value', 'label', true);
 
-          // If currentDish is still valid, re-select it
-          if (currentDish && availableDishes.find(d => d.name === currentDish.name)) {
+          if (
+            currentDish &&
+            availableDishes.find(d => d.name === currentDish.name)
+          ) {
             choicesInstance.setChoiceByValue(currentDish.name);
           } else {
-            // Otherwise, clear
             selectedDishes[courseType][idx] = null;
           }
         });
@@ -584,30 +552,25 @@
 
       function validatePage2Selections() {
         const allSelections = Array.from(document.querySelectorAll('.course-select'));
-        const allSelected = allSelections.every(select => select.value !== '');
+        const allSelected = allSelections.every(sel => sel.value !== '');
         toPage3Button.disabled = !allSelected;
       }
 
-      // Next => Page 3
       toPage3Button.addEventListener('click', () => {
         showPage('page3');
       });
 
-      // Back => Page 2
       backToPage2Button.addEventListener('click', () => {
         showPage('page2');
       });
 
-      // =============== PAGE 3: Custom Dishes ===============
-
-      // Initialize the single Choices instance for customDishCourse
+      // ======= PAGE 3 (Custom Dishes) =======
       customCourseChoices = new Choices(customDishCourse, {
         searchEnabled: true,
         itemSelectText: '',
         shouldSort: false
       });
 
-      // Validate for enabling "Add Custom Dish"
       function validateCustomDish() {
         const course = customDishCourse.value;
         const name = customDishName.value.trim();
@@ -615,11 +578,10 @@
         const isValid = course && name && description;
         addCustomDishButton.disabled = !isValid;
       }
-      [customDishCourse, customDishName, customDishDescription].forEach(input => {
-        input.addEventListener('input', validateCustomDish);
+      [customDishCourse, customDishName, customDishDescription].forEach(inp => {
+        inp.addEventListener('input', validateCustomDish);
       });
 
-      // Add custom dish
       addCustomDishButton.addEventListener('click', () => {
         const course = customDishCourse.value;
         const name = customDishName.value.trim();
@@ -630,33 +592,26 @@
           alert(`Custom dish added: ${name} (${course})`);
           console.log("All custom dishes:", customDishes);
 
-          // Reset fields
+          // Reset
           customDishName.value = '';
           customDishDescription.value = '';
           addCustomDishButton.disabled = true;
-
-          // Reset the dropdown to blank, allowing multiple additions
           customCourseChoices.setChoiceByValue('');
         }
       });
 
-      // Skip => Page 4
       skipCustomDishButton.addEventListener('click', () => {
         showPage('page4');
       });
-
-      // Next => Page 4
       toPage4Button.addEventListener('click', () => {
         showPage('page4');
       });
 
-      // =============== PAGE 4: Preview & PDF ===============
+      // ======= PAGE 4: Preview & PDF =======
       backToPage3Button.addEventListener('click', () => {
         showPage('page3');
       });
-
       backToBeginningButton.addEventListener('click', () => {
-        // Reset all selections
         selectedDishes = {
           starters: [],
           mains: [],
@@ -671,78 +626,73 @@
         dishCounts.classList.add('hidden');
         menuType.value = '';
         toPage2Button.disabled = true;
-
-        // Clear Page 2 content
         courseSelectionArea.innerHTML = '';
       });
 
-      // Populate the preview on Page 4
+      // ---- CONSOLE-STYLE PREVIEW (NO DESCRIPTIONS) ----
       function populatePreview() {
-        previewPane.innerHTML = ''; // Clear
+        previewPane.innerHTML = '';
 
-        // Add menu-specific info
-        const menuInfo = getMenuInfoText();
-        if (menuInfo) {
-          const infoParagraph = document.createElement('p');
-          infoParagraph.classList.add('menu-info');
-          infoParagraph.textContent = menuInfo;
-          previewPane.appendChild(infoParagraph);
+        const headingEl = document.createElement('p');
+        headingEl.textContent = 'Selected Dishes:';
+        previewPane.appendChild(headingEl);
+
+        // Show Menu Type
+        let menuTypeText = '';
+        switch (menuType.value) {
+          case '3course':
+            menuTypeText = '3-Course Menu';
+            break;
+          case 'buffet':
+            menuTypeText = 'Buffet - USD$30';
+            break;
+          case 'kiddie':
+            menuTypeText = "Kiddies' buffet - USD$15";
+            break;
+          default:
+            menuTypeText = 'No menu type selected';
+            break;
         }
+        const menuTypeLine = document.createElement('p');
+        menuTypeLine.textContent = menuTypeText;
+        previewPane.appendChild(menuTypeLine);
 
-        // EXTRA SPACING FOR BUFFET/KIDDIE (PREVIEW)
+        // Extra spacing if buffet/kiddie
         if (menuType.value === 'buffet' || menuType.value === 'kiddie') {
           const extraSpaceDiv = document.createElement('div');
-          extraSpaceDiv.style.height = '20px'; // Adjust if you want more or less
+          extraSpaceDiv.style.height = '20px';
           previewPane.appendChild(extraSpaceDiv);
         }
 
-        // Show selected dishes & custom dishes
+        // For each course
         Object.keys(selectedDishes).forEach(courseType => {
-          const dishes = selectedDishes[courseType].filter(d => d);
-          const relatedCustomDishes = customDishes.filter(cd => cd.course === courseType);
+          const chosenDishes = selectedDishes[courseType].filter(Boolean);
+          const customChosen = customDishes.filter(cd => cd.course === courseType);
 
-          if (dishes.length > 0 || relatedCustomDishes.length > 0) {
-            const courseHeading = document.createElement('h3');
-            courseHeading.textContent = `**${courseType.toUpperCase()}**`;
+          if (chosenDishes.length > 0 || customChosen.length > 0) {
+            // Print course heading
+            const courseHeading = document.createElement('p');
+            courseHeading.textContent = `${courseType.toUpperCase()}:`;
             previewPane.appendChild(courseHeading);
 
-            // Standard dishes
-            dishes.forEach(dish => {
-              const dishName = document.createElement('p');
-              dishName.classList.add('name');
-              dishName.textContent = dish.name;
-              previewPane.appendChild(dishName);
-
-              const dishDescription = document.createElement('p');
-              dishDescription.classList.add('description');
-              dishDescription.textContent = dish.description;
-              previewPane.appendChild(dishDescription);
+            // Standard Dishes: name only
+            chosenDishes.forEach(dish => {
+              const dishLine = document.createElement('p');
+              dishLine.textContent = `- ${dish.name}`;
+              previewPane.appendChild(dishLine);
             });
 
-            // Custom dishes
-            relatedCustomDishes.forEach(dish => {
-              const customDishName = document.createElement('p');
-              customDishName.classList.add('name');
-              customDishName.textContent = dish.name;
-              previewPane.appendChild(customDishName);
-
-              const customDishDescription = document.createElement('p');
-              customDishDescription.classList.add('description');
-              customDishDescription.textContent = dish.description;
-              previewPane.appendChild(customDishDescription);
+            // Custom Dishes: name only
+            customChosen.forEach(dish => {
+              const customLine = document.createElement('p');
+              customLine.textContent = `- ${dish.name}`;
+              previewPane.appendChild(customLine);
             });
-
-            // Mains Extra Text
-            if (courseType === 'mains' && (dishes.length + relatedCustomDishes.length > 0)) {
-              const mainsInfo = document.createElement('p');
-              mainsInfo.classList.add('mains-starch-info');
-              mainsInfo.innerHTML = `Mains are served with the starch of your choice (fries, mashed <br>potatoes, rice, or sadza) and vegetables or garden salad`;
-              previewPane.appendChild(mainsInfo);
-            }
           }
         });
       }
 
+      // Provide full text for PDF (with descriptions)
       function getMenuInfoText() {
         switch (menuType.value) {
           case '3course':
@@ -759,10 +709,10 @@ $3 supplemental charge for tempura prawns`;
         }
       }
 
-      // =============== PDF Download ===============
+      // ======= PDF Download (Include Descriptions) =======
       function loadImageAsBase64(url, callback) {
         const img = new Image();
-        img.setAttribute('crossOrigin', 'anonymous'); // avoid CORS issues
+        img.setAttribute('crossOrigin', 'anonymous');
         img.onload = function () {
           const canvas = document.createElement('canvas');
           canvas.width = img.width;
@@ -782,11 +732,10 @@ $3 supplemental charge for tempura prawns`;
       downloadPdfButton.addEventListener('click', () => {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        let yPos = 10; // vertical start
+        let yPos = 10;
 
-        const desiredWidth = 50; // mm
+        const desiredWidth = 50; // mm for the logo
 
-        // Insert Logo
         loadImageAsBase64('./logo.png', function (base64Logo, imgWidth, imgHeight) {
           if (base64Logo && imgWidth > 0 && imgHeight > 0) {
             const aspectRatio = imgHeight / imgWidth;
@@ -802,7 +751,7 @@ $3 supplemental charge for tempura prawns`;
             yPos += calculatedHeight + 5;
           }
 
-          // Menu info text
+          // Menu Info text
           const menuInfo = getMenuInfoText();
           if (menuInfo) {
             doc.setFont('Times', 'italic');
@@ -814,24 +763,22 @@ $3 supplemental charge for tempura prawns`;
             });
             yPos += (splitText.length * 6);
 
-            // EXTRA SPACING FOR BUFFET/KIDDIE (PDF)
+            // Extra spacing if buffet/kiddie
             if (menuType.value === 'buffet' || menuType.value === 'kiddie') {
-              yPos += 10; // Add some extra space
+              yPos += 10;
             }
           }
 
-          // List each course
+          // List each course with descriptions
           Object.keys(selectedDishes).forEach(courseType => {
             const dishes = selectedDishes[courseType].filter(d => d);
-            const relatedCustomDishes = customDishes.filter(cd => cd.course === courseType);
+            const customChosen = customDishes.filter(cd => cd.course === courseType);
 
-            if (dishes.length > 0 || relatedCustomDishes.length > 0) {
-              // Possibly add heading for 3-course
-              const addCourseHeading = (
-                menuType.value === '3course'
-                && ['starters', 'mains', 'desserts'].includes(courseType)
-              );
-              if (addCourseHeading) {
+            if (dishes.length > 0 || customChosen.length > 0) {
+              // If 3-course, print heading
+              const is3Course = (menuType.value === '3course');
+              const isStandardCourse = ['starters','mains','desserts'].includes(courseType);
+              if (is3Course && isStandardCourse) {
                 doc.setFont('Times', 'bold');
                 doc.setFontSize(11);
                 doc.text(`**${courseType.toUpperCase()}**`, doc.internal.pageSize.getWidth() / 2, yPos, {
@@ -840,60 +787,43 @@ $3 supplemental charge for tempura prawns`;
                 yPos += 10;
               }
 
-              // Standard dishes
+              // For each standard dish, print Name + Description
               dishes.forEach(dish => {
+                // Dish name
                 doc.setFont('Times', 'normal');
                 doc.setFontSize(11);
-                doc.text(dish.name.toUpperCase(), doc.internal.pageSize.getWidth() / 2, yPos, {
+                doc.text(`${dish.name.toUpperCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
                   align: 'center'
                 });
                 yPos += 6;
 
+                // Dish description
                 doc.setFont('Times', 'italic');
                 doc.setFontSize(11);
-                doc.text(dish.description.toLowerCase(), doc.internal.pageSize.getWidth() / 2, yPos, {
+                doc.text(`${dish.description.toLowerCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
                   align: 'center'
                 });
                 yPos += 10;
               });
 
-              // Custom dishes
-              relatedCustomDishes.forEach(dish => {
+              // For each custom dish, print Name + Description
+              customChosen.forEach(dish => {
+                // Dish name
                 doc.setFont('Times', 'normal');
                 doc.setFontSize(11);
-                doc.text(dish.name.toUpperCase(), doc.internal.pageSize.getWidth() / 2, yPos, {
+                doc.text(`${dish.name.toUpperCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
                   align: 'center'
                 });
                 yPos += 6;
 
+                // Dish description
                 doc.setFont('Times', 'italic');
                 doc.setFontSize(11);
-                doc.text(dish.description.toLowerCase(), doc.internal.pageSize.getWidth() / 2, yPos, {
+                doc.text(`${dish.description.toLowerCase()}`, doc.internal.pageSize.getWidth() / 2, yPos, {
                   align: 'center'
                 });
                 yPos += 10;
               });
-
-              // Mains Extra Text
-              if (courseType === 'mains') {
-                const totalMains = dishes.length + relatedCustomDishes.length;
-                if (totalMains > 0) {
-                  doc.setFont('Times', 'bolditalic');
-                  doc.setFontSize(12);
-
-                  // Insert \n for line break after "mashed"
-                  const starchText = "Mains are served with the starch of your choice (fries, mashed\npotatoes, rice, or sadza) and vegetables or garden salad";
-                  const lines = doc.splitTextToSize(starchText, 180);
-
-                  doc.text(
-                    lines,
-                    doc.internal.pageSize.getWidth() / 2,
-                    yPos,
-                    { align: 'center' }
-                  );
-                  yPos += lines.length * 6;
-                }
-              }
             }
           });
 
